@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>منشئ الفاتورة - طارق المرباطي</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal:   #005f73;
+      --teal2:  #0a7d96;
+      --red:    #ae2012;
+      --bg:     #f4f7f8;
+      --white:  #ffffff;
+      --border: #dde4e8;
+      --text:   #1e2d35;
+      --muted:  #6b8290;
+      --accent: #e9f4f7;
+    }
+
+    body {
+      font-family: 'Tajawal', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 0;
+    }
+
+    /* ─── App Shell ─────────────────────────────── */
+    .app-header {
+      background: var(--teal);
+      color: #fff;
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 2px 12px rgba(0,95,115,.35);
+    }
+    .app-header svg { flex-shrink: 0; }
+    .app-header h1 { font-size: 1.45rem; font-weight: 800; letter-spacing: .01em; }
+    .app-header p  { font-size: .85rem; opacity: .8; margin-top: 2px; }
+
+    .app-body {
+      max-width: 900px;
+      margin: 36px auto;
+      padding: 0 20px 60px;
+    }
+
+    /* ─── Card ───────────────────────────────────── */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 32px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    }
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--teal);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title::before {
+      content: '';
+      display: inline-block;
+      width: 4px; height: 18px;
+      background: var(--teal);
+      border-radius: 2px;
+    }
+
+    /* ─── Form Grid ──────────────────────────────── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: .82rem; font-weight: 600; color: var(--muted); }
+    .field input, .field textarea, .field select {
+      font-family: 'Tajawal', sans-serif;
+      font-size: .95rem;
+      padding: 10px 13px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      background: #fff;
+      transition: border-color .2s, box-shadow .2s;
+      outline: none;
+    }
+    .field input:focus, .field textarea:focus, .field select:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(0,95,115,.1);
+    }
+    .field textarea { resize: vertical; min-height: 72px; }
+
+    /* ─── Payment Rows ───────────────────────────── */
+    .payment-rows { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+    .payment-row {
+      display: grid;
+      grid-template-columns: 1fr 90px 110px 36px;
+      gap: 10px;
+      align-items: center;
+      background: var(--accent);
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .payment-row input {
+      font-family: 'Tajawal', sans-serif;
+      font-size: .9rem;
+      padding: 8px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      background: #fff;
+      outline: none;
+      width: 100%;
+      transition: border-color .2s;
+    }
+    .payment-row input:focus { border-color: var(--teal); }
+    .btn-remove {
+      background: #ffe3e0; border: none; border-radius: 6px;
+      color: #c0392b; font-size: 1.1rem; cursor: pointer;
+      width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .btn-remove:hover { background: #ffc7c0; }
+
+    .row-header {
+      display: grid;
+      grid-template-columns: 1fr 90px 110px 36px;
+      gap: 10px;
+      padding: 0 12px 4px;
+      font-size: .78rem;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    /* ─── Totals Preview ─────────────────────────── */
+    .totals-preview {
+      background: linear-gradient(135deg, var(--teal) 0%, var(--teal2) 100%);
+      color: #fff;
+      border-radius: 10px;
+      padding: 18px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 6px;
+    }
+    .totals-preview .label { font-size: .9rem; opacity: .85; }
+    .totals-preview .amount { font-size: 1.5rem; font-weight: 800; }
+    .totals-preview .pct-note { font-size: .78rem; opacity: .7; margin-top: 2px; }
+
+    /* ─── Buttons ────────────────────────────────── */
+    .btn-row { display: flex; gap: 12px; justify-content: flex-end; margin-top: 8px; }
+    .btn {
+      font-family: 'Tajawal', sans-serif;
+      font-size: .95rem;
+      font-weight: 700;
+      padding: 11px 22px;
+      border-radius: 9px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: transform .1s, box-shadow .2s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-secondary {
+      background: var(--accent);
+      color: var(--teal);
+      border: 1.5px solid var(--border);
+    }
+    .btn-secondary:hover { background: #d8edf2; }
+    .btn-primary {
+      background: var(--teal);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(0,95,115,.35);
+    }
+    .btn-primary:hover { background: var(--teal2); box-shadow: 0 6px 18px rgba(0,95,115,.4); }
+    .btn-danger {
+      background: var(--red);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(174,32,18,.3);
+    }
+    .btn-danger:hover { background: #c0392b; }
+    .btn-add {
+      background: none; border: 1.5px dashed var(--teal);
+      color: var(--teal); font-family: 'Tajawal', sans-serif;
+      font-weight: 700; font-size: .9rem;
+      padding: 9px 16px; border-radius: 8px;
+      cursor: pointer; width: 100%;
+      transition: background .15s;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn-add:hover { background: var(--accent); }
+
+    /* ─── Preview Modal ──────────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(3px);
+      z-index: 999;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 30px 16px;
+      overflow-y: auto;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-inner {
+      background: #fff;
+      border-radius: 14px;
+      width: 100%;
+      max-width: 820px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+      overflow: hidden;
+    }
+    .modal-toolbar {
+      background: var(--teal);
+      color: #fff;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-toolbar span { font-weight: 700; font-size: 1rem; }
+    .modal-actions { display: flex; gap: 10px; }
+    .modal-content { padding: 20px; }
+    .btn-close {
+      background: rgba(255,255,255,.18); border: none; color: #fff;
+      border-radius: 7px; padding: 7px 14px; cursor: pointer;
+      font-family: 'Tajawal', sans-serif; font-weight: 700; font-size: .9rem;
+      transition: background .15s;
+    }
+    .btn-close:hover { background: rgba(255,255,255,.3); }
+
+    /* ─── Invoice Print Area ─────────────────────── */
+    #invoice-render {
+      font-family: 'Tajawal', sans-serif;
+      direction: rtl;
+      background: #fff;
+      color: #1e2d35;
+      padding: 36px 40px;
+      font-size: 15px;
+      line-height: 1.6;
+      min-width: 740px;
+    }
+    .inv-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2.5px solid #005f73;
+      padding-bottom: 18px;
+      margin-bottom: 26px;
+    }
+    .inv-header h1 {
+      font-size: 2rem;
+      color: #005f73;
+      font-weight: 800;
+    }
+    .inv-meta { text-align: left; }
+    .inv-meta p { margin: 2px 0; font-size: .85rem; color: #555; font-weight: 600; }
+    .inv-parties {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      gap: 20px;
+    }
+    .inv-party { width: 48%; }
+    .inv-party-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #005f73;
+      border-bottom: 1px solid #dde4e8;
+      padding-bottom: 5px;
+      margin-bottom: 8px;
+    }
+    .inv-party p { margin: 3px 0; font-size: .88rem; }
+    .inv-work { margin-bottom: 24px; }
+    .inv-work-title {
+      font-size: 1rem; font-weight: 700;
+      color: #005f73; border-bottom: 1px solid #dde4e8;
+      padding-bottom: 5px; margin-bottom: 10px;
+    }
+    .inv-work ul { list-style: none; padding: 0; }
+    .inv-work li {
+      background: #eef4f6; margin-bottom: 5px;
+      padding: 8px 12px; border-radius: 4px; font-size: .88rem;
+    }
+    .inv-work .duration { margin-top: 8px; font-size: .88rem; }
+    .inv-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .inv-table th {
+      background: #005f73; color: #fff;
+      padding: 10px 12px; text-align: right; font-size: .88rem;
+    }
+    .inv-table th:last-child { text-align: left; }
+    .inv-table td {
+      padding: 10px 12px; border-bottom: 1px solid #eee; font-size: .88rem;
+    }
+    .inv-table td:last-child { text-align: left; }
+    .inv-total {
+      text-align: right; font-size: 1.25rem; font-weight: 800;
+      color: #ae2012; border-top: 2px solid #1e2d35;
+      padding-top: 10px; margin-bottom: 20px;
+    }
+    .inv-payment {
+      background: #f8f9fa; padding: 13px 16px;
+      border-radius: 6px; font-size: .84rem;
+      margin-bottom: 36px; line-height: 1.7;
+    }
+    .inv-payment strong { color: #005f73; }
+    .inv-sigs {
+      display: flex; justify-content: space-between;
+      margin-top: 50px; padding-top: 10px;
+    }
+    .inv-sig { width: 40%; text-align: center; }
+    .inv-sig-line { border-bottom: 1px solid #000; margin: 38px 0 8px; }
+    .inv-sig-title { font-weight: 700; margin-bottom: 8px; font-size: .9rem; }
+    .inv-sig-name { font-size: .88rem; }
+    .inv-footer {
+      margin-top: 40px; text-align: center;
+      font-size: .78rem; color: #888;
+      border-top: 1px solid #eee; padding-top: 10px;
+    }
+
+    /* ─── Toast ──────────────────────────────────── */
+    .toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: #1e2d35; color: #fff;
+      padding: 12px 24px; border-radius: 10px;
+      font-size: .9rem; font-weight: 600;
+      box-shadow: 0 8px 24px rgba(0,0,0,.25);
+      transition: transform .3s ease, opacity .3s ease;
+      opacity: 0; pointer-events: none; z-index: 9999;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* ─── Responsive ─────────────────────────────── */
+    @media (max-width: 640px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .card { padding: 20px 18px; }
+      .payment-row { grid-template-columns: 1fr 70px 90px 36px; }
+      .btn-row { flex-direction: column; }
+      .btn { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-header">
+  <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+    <rect width="36" height="36" rx="10" fill="rgba(255,255,255,.15)"/>
+    <path d="M9 10h18M9 16h12M9 22h15M9 28h10" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+    <circle cx="27" cy="27" r="6" fill="#ae2012"/>
+    <path d="M25 27h4M27 25v4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+  </svg>
+  <div>
+    <h1>منشئ الفاتورة</h1>
+    <p>أدخل بيانات الفاتورة ثم قم بتنزيلها كـ PDF</p>
+  </div>
+</div>
+
+<div class="app-body">
+
+  <!-- ── Invoice Info ── -->
+  <div class="card">
+    <div class="card-title">بيانات الفاتورة</div>
+    <div class="grid-3">
+      <div class="field">
+        <label>رقم الفاتورة</label>
+        <input id="inv-number" type="text" placeholder="INV-26010201"/>
+      </div>
+      <div class="field">
+        <label>التاريخ</label>
+        <input id="inv-date" type="text" placeholder="٢/٢/٢٠٢٦"/>
+      </div>
+      <div class="field">
+        <label>مدة التنفيذ</label>
+        <input id="inv-duration" type="text" placeholder="10 أيام عمل"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── From (sender) ── -->
+  <div class="card">
+    <div class="card-title">من (مقدّم الخدمة)</div>
+    <div class="grid-2">
+      <div class="field">
+        <label>الاسم الكامل</label>
+        <input id="from-name" type="text" placeholder="مثال: محمد أحمد العلي"/>
+      </div>
+      <div class="field">
+        <label>رقم الهاتف</label>
+        <input id="from-phone" type="text" placeholder="مثال: ٣XXXXXXX"/>
+      </div>
+      <div class="field">
+        <label>البريد الإلكتروني</label>
+        <input id="from-email" type="text" placeholder="مثال: name@email.com"/>
+      </div>
+      <div class="field">
+        <label>رقم IBAN</label>
+        <input id="from-iban" type="text" placeholder="مثال: BH00XXXX00000000000000"/>
+      </div>
+      <div class="field">
+        <label>BenefitPay</label>
+        <input id="from-benefit" type="text" placeholder="مثال: ٣XXXXXXX"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Client ── -->
+  <div class="card">
+    <div class="card-title">بيانات العميل</div>
+    <div class="grid-2">
+      <div class="field">
+        <label>اسم الشركة / العميل</label>
+        <input id="client-name" type="text" placeholder="وين وبكم للدعاية والإعلان ذ.م.م"/>
+      </div>
+      <div class="field">
+        <label>رقم الهاتف</label>
+        <input id="client-phone" type="text" placeholder="مثال: ٣XXXXXXX"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Work Details ── -->
+  <div class="card">
+    <div class="card-title">تفاصيل العمل</div>
+    <div id="work-items" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;"></div>
+    <button class="btn-add" onclick="addWorkItem()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      إضافة بند عمل
+    </button>
+  </div>
+
+  <!-- ── Payment Schedule ── -->
+  <div class="card">
+    <div class="card-title">جدول الدفعات</div>
+    <div class="row-header">
+      <span>الوصف</span>
+      <span>النسبة</span>
+      <span>المبلغ (دينار)</span>
+      <span></span>
+    </div>
+    <div class="payment-rows" id="payment-rows"></div>
+    <button class="btn-add" onclick="addPaymentRow()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      إضافة دفعة
+    </button>
+    <div class="totals-preview" style="margin-top:16px;">
+      <div>
+        <div class="label">الإجمالي المستحق</div>
+        <div class="pct-note" id="total-pct-note"></div>
+      </div>
+      <div class="amount" id="total-display">0 دينار بحريني</div>
+    </div>
+  </div>
+
+  <!-- ── Actions ── -->
+  <div class="btn-row">
+    <button class="btn btn-danger" onclick="clearAll()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M6 4V3h4v1M5 4v8a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V4" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      مسح الكل
+    </button>
+    <button class="btn btn-secondary" onclick="fillDefaults()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 8a6 6 0 1 1 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M2 11V8h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      بيانات تجريبية
+    </button>
+    <button class="btn btn-primary" onclick="openPreview()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3C4 3 1 8 1 8s3 5 7 5 7-5 7-5-3-5-7-5Z" stroke="#fff" stroke-width="1.8"/><circle cx="8" cy="8" r="2" fill="#fff"/></svg>
+      معاينة الفاتورة
+    </button>
+  </div>
+
+</div><!-- /app-body -->
+
+<!-- ── Preview Modal ── -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-inner">
+    <div class="modal-toolbar">
+      <span>معاينة الفاتورة</span>
+      <div class="modal-actions">
+        <button class="btn-close" onclick="downloadPDF()">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="margin-left:5px;"><path d="M8 2v9M4 8l4 4 4-4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 14h12" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+          تنزيل PDF
+        </button>
+        <button class="btn-close" onclick="closePreview()">✕ إغلاق</button>
+      </div>
+    </div>
+    <div class="modal-content" style="overflow-x:auto;">
+      <div id="invoice-render"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast ── -->
+<div class="toast" id="toast"></div>
+
+<script>
+  /* ─── State ──────────────────────────────────── */
+  let workItems = [];
+  let paymentRows = [];
+
+  /* ─── Init ───────────────────────────────────── */
+  window.addEventListener('DOMContentLoaded', () => {
+    addWorkItem();
+    addPaymentRow();
+  });
+
+  /* ─── Defaults (dummy data for demo) ────────── */
+  function fillDefaults() {
+    set('inv-number', 'INV-26010201');
+    set('inv-date', '١/١/٢٠٢٦');
+    set('inv-duration', '10 أيام عمل');
+    set('from-name', 'محمد أحمد العلي');
+    set('from-phone', '٣١٢٣٤٥٦٧');
+    set('from-email', 'name@email.com');
+    set('from-iban', 'BH00XXXX00000000000000');
+    set('from-benefit', '٣١٢٣٤٥٦٧');
+    set('client-name', 'شركة المثال للدعاية والإعلان ذ.م.م');
+    set('client-phone', '٣٧٦٥٤٣٢١');
+    // Clear and fill work items
+    workItems = [];
+    document.getElementById('work-items').innerHTML = '';
+    ['توريد وتركيب رفوف تخزين معدنية', 'تنظيف وتنظيم المستودع', 'إعداد قائمة بالأصناف'].forEach(addWorkItem);
+    // Clear and fill payments
+    paymentRows = [];
+    document.getElementById('payment-rows').innerHTML = '';
+    [
+      ['دفعة مقدمة عند توقيع الاتفاق', '50%~', '500'],
+      ['بعد الانتهاء من توريد وتركيب الرفوف', '30%~', '300'],
+      ['بعد الانتهاء من أعمال التنظيف', '10%~', '100'],
+      ['قبل تسليم القائمة المنظمة للأصناف', '10%~', '100'],
+    ].forEach(r => addPaymentRow(...r));
+    toast('تم تحميل البيانات التجريبية ✓');
+  }
+
+  /* ─── Clear All ──────────────────────────────── */
+  function clearAll() {
+    ['inv-number','inv-date','inv-duration','from-name','from-phone',
+     'from-email','from-iban','from-benefit','client-name','client-phone']
+      .forEach(id => set(id, ''));
+    workItems = [];
+    document.getElementById('work-items').innerHTML = '';
+    paymentRows = [];
+    document.getElementById('payment-rows').innerHTML = '';
+    addWorkItem();
+    addPaymentRow();
+    updateTotal();
+    toast('تم مسح جميع الحقول ✓');
+  }
+
+  function set(id, val) { document.getElementById(id).value = val; }
+  function get(id) { return document.getElementById(id).value.trim(); }
+
+  /* ─── Work Items ─────────────────────────────── */
+  function addWorkItem(text = '') {
+    const id = Date.now() + Math.random();
+    workItems.push(id);
+    const wrap = document.getElementById('work-items');
+    const row = document.createElement('div');
+    row.id = 'work-' + id;
+    row.style.cssText = 'display:flex;gap:8px;align-items:center;';
+    row.innerHTML = `
+      <input data-work="${id}" type="text" value="${text}"
+        placeholder="وصف بند العمل..."
+        style="flex:1;font-family:Tajawal,sans-serif;font-size:.93rem;padding:9px 12px;
+               border:1.5px solid var(--border);border-radius:7px;outline:none;
+               transition:border-color .2s;"
+        onfocus="this.style.borderColor='var(--teal)'"
+        onblur="this.style.borderColor='var(--border)'"/>
+      <button class="btn-remove" onclick="removeWorkItem(${id})">✕</button>`;
+    wrap.appendChild(row);
+  }
+  function removeWorkItem(id) {
+    workItems = workItems.filter(i => i !== id);
+    const el = document.getElementById('work-' + id);
+    if (el) el.remove();
+  }
+  function getWorkItems() {
+    return [...document.querySelectorAll('[data-work]')]
+      .map(el => el.value.trim()).filter(Boolean);
+  }
+
+  /* ─── Payment Rows ───────────────────────────── */
+  function addPaymentRow(desc = '', pct = '', amt = '') {
+    const id = Date.now() + Math.random();
+    paymentRows.push(id);
+    const wrap = document.getElementById('payment-rows');
+    const row = document.createElement('div');
+    row.id = 'prow-' + id;
+    row.className = 'payment-row';
+    row.innerHTML = `
+      <input data-prow-desc="${id}" type="text" value="${desc}" placeholder="وصف الدفعة"/>
+      <input data-prow-pct="${id}"  type="text" value="${pct}"  placeholder="50%~"/>
+      <input data-prow-amt="${id}"  type="number" value="${amt}" placeholder="0"
+             oninput="updateTotal()" style="text-align:left;direction:ltr;"/>
+      <button class="btn-remove" onclick="removePaymentRow(${id})">✕</button>`;
+    wrap.appendChild(row);
+    updateTotal();
+  }
+  function removePaymentRow(id) {
+    paymentRows = paymentRows.filter(i => i !== id);
+    const el = document.getElementById('prow-' + id);
+    if (el) el.remove();
+    updateTotal();
+  }
+  function getPaymentRows() {
+    return paymentRows.map(id => ({
+      desc: (document.querySelector(`[data-prow-desc="${id}"]`)?.value || '').trim(),
+      pct:  (document.querySelector(`[data-prow-pct="${id}"]`)?.value  || '').trim(),
+      amt:  parseFloat(document.querySelector(`[data-prow-amt="${id}"]`)?.value) || 0,
+    })).filter(r => r.desc || r.amt);
+  }
+  function updateTotal() {
+    const rows = getPaymentRows();
+    const total = rows.reduce((s, r) => s + r.amt, 0);
+    document.getElementById('total-display').textContent = formatNum(total) + ' دينار بحريني';
+    const totalPct = rows.reduce((s, r) => {
+      const n = parseFloat((r.pct || '').replace(/[^0-9.]/g, ''));
+      return s + (isNaN(n) ? 0 : n);
+    }, 0);
+    document.getElementById('total-pct-note').textContent =
+      totalPct > 0 ? `مجموع النسب: ${totalPct}%` : '';
+  }
+
+  function formatNum(n) {
+    return n.toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 3 });
+  }
+
+  /* ─── Build Invoice HTML ─────────────────────── */
+  function buildInvoiceHTML() {
+    const rows = getPaymentRows();
+    const total = rows.reduce((s, r) => s + r.amt, 0);
+    const workList = getWorkItems();
+
+    const tableRows = rows.map(r => `
+      <tr>
+        <td>${r.desc}</td>
+        <td>${r.pct}</td>
+        <td>${formatNum(r.amt)} دينار</td>
+      </tr>`).join('');
+
+    const workListHTML = workList.map((w, i) =>
+      `<li>${i + 1}. ${w}</li>`).join('');
+
+    const duration = get('inv-duration');
+
+    return `
+      <div class="inv-header">
+        <h1>فاتورة خدمات</h1>
+        <div class="inv-meta">
+          <p>الفاتورة: ${get('inv-number')}</p>
+          <p>التاريخ: ${get('inv-date')}</p>
+        </div>
+      </div>
+
+      <div class="inv-parties">
+        <div class="inv-party">
+          <div class="inv-party-title">من</div>
+          <p><strong>الاسم:</strong> ${get('from-name')}</p>
+          <p><strong>الهاتف:</strong> ${get('from-phone')}</p>
+        </div>
+        <div class="inv-party" style="text-align:right;">
+          <div class="inv-party-title">بيانات العميل</div>
+          <p><strong>الشركة:</strong> ${get('client-name')}</p>
+          <p><strong>الهاتف:</strong> ${get('client-phone')}</p>
+        </div>
+      </div>
+
+      ${workListHTML || duration ? `
+      <div class="inv-work">
+        <div class="inv-work-title">تفاصيل العمل</div>
+        <ul>${workListHTML}</ul>
+        ${duration ? `<p class="duration"><strong>مدة التنفيذ:</strong> ${duration}</p>` : ''}
+      </div>` : ''}
+
+      <table class="inv-table">
+        <thead>
+          <tr>
+            <th>الوصف</th>
+            <th>النسبة</th>
+            <th style="text-align:left;">المبلغ</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+
+      <div class="inv-total">الإجمالي المستحق: ${formatNum(total)} دينار بحريني</div>
+
+      <div class="inv-payment">
+        <strong>طريقة الدفع:</strong><br/>
+        ${get('from-iban') ? `IBAN: ${get('from-iban')}<br/>` : ''}
+        ${get('from-benefit') ? `BenefitPay: ${get('from-benefit')}` : ''}
+      </div>
+
+      <div class="inv-sigs">
+        <div class="inv-sig">
+          <div class="inv-sig-title">توقيع</div>
+          <div class="inv-sig-line"></div>
+          <div class="inv-sig-name">${get('from-name')}</div>
+        </div>
+        <div class="inv-sig">
+          <div class="inv-sig-title">توقيع</div>
+          <div class="inv-sig-line"></div>
+          <div class="inv-sig-name">${get('client-name')}</div>
+        </div>
+      </div>
+
+      <div class="inv-footer">
+        ${[get('from-email'), get('from-name'), get('from-phone')].filter(Boolean).join(' | ')}
+      </div>`;
+  }
+
+  /* ─── Preview ────────────────────────────────── */
+  function openPreview() {
+    document.getElementById('invoice-render').innerHTML = buildInvoiceHTML();
+    document.getElementById('modal-overlay').classList.add('open');
+  }
+  function closePreview() {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+
+  /* ─── Download PDF ───────────────────────────── */
+  async function downloadPDF() {
+    toast('جاري إنشاء ملف PDF…');
+    const el = document.getElementById('invoice-render');
+    try {
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        windowWidth: el.scrollWidth,
+        windowHeight: el.scrollHeight,
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pdfW = pdf.internal.pageSize.getWidth();
+      const pdfH = pdf.internal.pageSize.getHeight();
+      const ratio = canvas.height / canvas.width;
+      const imgH = pdfW * ratio;
+
+      if (imgH <= pdfH) {
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfW, imgH);
+      } else {
+        // Multi-page
+        let y = 0;
+        const pageImgH = pdfH;
+        const pageCanvasH = Math.floor(canvas.width * (pdfH / pdfW));
+        let page = 0;
+        while (y < canvas.height) {
+          const pageCanvas = document.createElement('canvas');
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = Math.min(pageCanvasH, canvas.height - y);
+          const ctx = pageCanvas.getContext('2d');
+          ctx.drawImage(canvas, 0, y, canvas.width, pageCanvas.height, 0, 0, canvas.width, pageCanvas.height);
+          const pageData = pageCanvas.toDataURL('image/png');
+          if (page > 0) pdf.addPage();
+          const h = pdfW * (pageCanvas.height / canvas.width);
+          pdf.addImage(pageData, 'PNG', 0, 0, pdfW, h);
+          y += pageCanvasH;
+          page++;
+        }
+      }
+
+      const filename = `فاتورة-${get('inv-number') || 'invoice'}.pdf`;
+      pdf.save(filename);
+      toast('تم تنزيل الفاتورة ✓');
+    } catch (err) {
+      console.error(err);
+      toast('حدث خطأ أثناء إنشاء PDF');
+    }
+  }
+
+  /* ─── Toast ──────────────────────────────────── */
+  function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2800);
+  }
+
+  // Close modal on overlay click
+  document.getElementById('modal-overlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closePreview();
+  });
+</script>
+</body>
+</html>
