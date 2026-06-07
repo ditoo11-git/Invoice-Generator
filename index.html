@@ -312,23 +312,23 @@
       padding-top: 10px; margin-bottom: 20px;
     }
     .inv-payment {
-      background: #f8f9fa; padding: 13px 16px;
+      background: #f8f9fa; padding: 10px 14px;
       border-radius: 6px; font-size: .84rem;
-      margin-bottom: 36px; line-height: 1.7;
+      margin-bottom: 16px; line-height: 1.6;
     }
     .inv-payment strong { color: #005f73; }
     .inv-sigs {
       display: flex; justify-content: space-between;
-      margin-top: 50px; padding-top: 10px;
+      margin-top: 20px; padding-top: 6px;
     }
     .inv-sig { width: 40%; text-align: center; }
-    .inv-sig-line { border-bottom: 1px solid #000; margin: 38px 0 8px; }
-    .inv-sig-title { font-weight: 700; margin-bottom: 8px; font-size: .9rem; }
+    .inv-sig-line { border-bottom: 1px solid #000; margin: 28px 0 6px; }
+    .inv-sig-title { font-weight: 700; margin-bottom: 6px; font-size: .9rem; }
     .inv-sig-name { font-size: .88rem; }
     .inv-footer {
-      margin-top: 40px; text-align: center;
+      margin-top: 16px; text-align: center;
       font-size: .78rem; color: #888;
-      border-top: 1px solid #eee; padding-top: 10px;
+      border-top: 1px solid #eee; padding-top: 8px;
     }
 
     /* ─── Toast ──────────────────────────────────── */
@@ -342,6 +342,60 @@
       opacity: 0; pointer-events: none; z-index: 9999;
     }
     .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* ─── Toggle Card ────────────────────────────── */
+    .toggle-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05);
+      overflow: hidden;
+    }
+    .toggle-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 32px;
+      cursor: pointer;
+      user-select: none;
+      gap: 10px;
+      transition: background .15s;
+    }
+    .toggle-card-header:hover { background: var(--accent); }
+    .toggle-card-title {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 1rem; font-weight: 700; color: var(--teal);
+    }
+    .toggle-card-title::before {
+      content: '';
+      display: inline-block;
+      width: 4px; height: 18px;
+      background: var(--teal);
+      border-radius: 2px;
+    }
+    .toggle-badge {
+      font-size: .72rem; font-weight: 700;
+      background: #e0f0f4; color: var(--teal);
+      padding: 2px 8px; border-radius: 20px;
+      margin-right: 6px;
+    }
+    .toggle-chevron {
+      width: 20px; height: 20px; flex-shrink: 0;
+      transition: transform .25s ease;
+      color: var(--muted);
+    }
+    .toggle-chevron.open { transform: rotate(180deg); }
+    .toggle-card-body {
+      display: none;
+      padding: 0 32px 24px;
+      border-top: 1px solid var(--border);
+    }
+    .toggle-card-body.open { display: block; padding-top: 22px; }
+    .toggle-hint {
+      font-size: .8rem; color: var(--muted);
+      margin-bottom: 18px; line-height: 1.5;
+    }
 
     /* ─── Responsive ─────────────────────────────── */
     @media (max-width: 640px) {
@@ -369,6 +423,50 @@
 </div>
 
 <div class="app-body">
+
+  <!-- ── Advanced: VAT / Currency / Exchange Rate ── -->
+  <div class="toggle-card">
+    <div class="toggle-card-header" onclick="toggleAdvanced()">
+      <div class="toggle-card-title">
+        إعدادات متقدمة
+        <span class="toggle-badge">اختياري</span>
+      </div>
+      <svg class="toggle-chevron" id="adv-chevron" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M5 7.5l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="toggle-card-body" id="adv-body">
+      <p class="toggle-hint">هذه الحقول اختيارية. إذا تُركت فارغة، لن تظهر في الفاتورة.</p>
+      <div class="grid-3">
+        <div class="field">
+          <label>العملة</label>
+          <select id="adv-currency" onchange="updateTotal()">
+            <option value="BHD">دينار بحريني (BHD)</option>
+            <option value="USD">دولار أمريكي (USD)</option>
+            <option value="EUR">يورو (EUR)</option>
+            <option value="GBP">جنيه إسترليني (GBP)</option>
+            <option value="SAR">ريال سعودي (SAR)</option>
+            <option value="AED">درهم إماراتي (AED)</option>
+            <option value="KWD">دينار كويتي (KWD)</option>
+            <option value="QAR">ريال قطري (QAR)</option>
+            <option value="OTHER">أخرى</option>
+          </select>
+        </div>
+        <div class="field" id="adv-custom-currency-field" style="display:none;">
+          <label>اسم العملة المخصصة</label>
+          <input id="adv-custom-currency" type="text" placeholder="مثال: ليرة تركية" oninput="updateTotal()"/>
+        </div>
+        <div class="field">
+          <label>ضريبة القيمة المضافة (VAT %)</label>
+          <input id="adv-vat" type="number" min="0" max="100" step="0.1" placeholder="مثال: 10" oninput="updateTotal()"/>
+        </div>
+        <div class="field">
+          <label>سعر الصرف (مقابل الدينار البحريني)</label>
+          <input id="adv-rate" type="number" min="0" step="0.0001" placeholder="مثال: 2.6530" oninput="updateTotal()"/>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ── Invoice Info ── -->
   <div class="card">
@@ -620,16 +718,41 @@
       amt:  parseFloat(document.querySelector(`[data-prow-amt="${id}"]`)?.value) || 0,
     })).filter(r => r.desc || r.amt);
   }
+  function getCurrencyLabel() {
+    const sel = document.getElementById('adv-currency').value;
+    if (sel === 'OTHER') return document.getElementById('adv-custom-currency').value.trim() || 'عملة';
+    const map = { BHD:'دينار بحريني', USD:'دولار أمريكي', EUR:'يورو', GBP:'جنيه إسترليني',
+                  SAR:'ريال سعودي', AED:'درهم إماراتي', KWD:'دينار كويتي', QAR:'ريال قطري' };
+    return map[sel] || sel;
+  }
+
   function updateTotal() {
+    // show/hide custom currency field
+    const sel = document.getElementById('adv-currency').value;
+    document.getElementById('adv-custom-currency-field').style.display = sel === 'OTHER' ? '' : 'none';
+
     const rows = getPaymentRows();
-    const total = rows.reduce((s, r) => s + r.amt, 0);
-    document.getElementById('total-display').textContent = formatNum(total) + ' دينار بحريني';
+    const subtotal = rows.reduce((s, r) => s + r.amt, 0);
+    const vatPct = parseFloat(document.getElementById('adv-vat').value) || 0;
+    const rate   = parseFloat(document.getElementById('adv-rate').value) || 0;
+    const vatAmt = subtotal * vatPct / 100;
+    const total  = subtotal + vatAmt;
+    const currency = getCurrencyLabel();
+
+    let displayText = formatNum(total) + ' ' + currency;
+    if (rate > 0 && sel !== 'BHD') {
+      const converted = total / rate;
+      displayText += ` (≈ ${formatNum(converted)} دينار بحريني)`;
+    }
+    document.getElementById('total-display').textContent = displayText;
+
     const totalPct = rows.reduce((s, r) => {
       const n = parseFloat((r.pct || '').replace(/[^0-9.]/g, ''));
       return s + (isNaN(n) ? 0 : n);
     }, 0);
-    document.getElementById('total-pct-note').textContent =
-      totalPct > 0 ? `مجموع النسب: ${totalPct}%` : '';
+    let note = totalPct > 0 ? `مجموع النسب: ${totalPct}%` : '';
+    if (vatPct > 0) note += (note ? ' • ' : '') + `شامل VAT ${vatPct}%`;
+    document.getElementById('total-pct-note').textContent = note;
   }
 
   function formatNum(n) {
@@ -639,19 +762,35 @@
   /* ─── Build Invoice HTML ─────────────────────── */
   function buildInvoiceHTML() {
     const rows = getPaymentRows();
-    const total = rows.reduce((s, r) => s + r.amt, 0);
+    const subtotal = rows.reduce((s, r) => s + r.amt, 0);
+    const vatPct  = parseFloat(document.getElementById('adv-vat').value) || 0;
+    const rate    = parseFloat(document.getElementById('adv-rate').value) || 0;
+    const vatAmt  = subtotal * vatPct / 100;
+    const total   = subtotal + vatAmt;
+    const currency = getCurrencyLabel();
+    const currSel  = document.getElementById('adv-currency').value;
     const workList = getWorkItems();
 
     const tableRows = rows.map(r => `
       <tr>
         <td>${r.desc}</td>
         <td>${r.pct}</td>
-        <td>${formatNum(r.amt)} دينار</td>
+        <td>${formatNum(r.amt)} ${currency}</td>
       </tr>`).join('');
 
-    const workListHTML = workList.map((w, i) =>
-      `<li>${i + 1}. ${w}</li>`).join('');
+    const vatRow = vatPct > 0 ? `
+      <tr style="color:#ae2012;">
+        <td colspan="2" style="text-align:right;font-weight:600;">ضريبة القيمة المضافة (${vatPct}%)</td>
+        <td>${formatNum(vatAmt)} ${currency}</td>
+      </tr>` : '';
 
+    const rateNote = (rate > 0 && currSel !== 'BHD') ? `
+      <p style="font-size:.8rem;color:#888;margin-top:6px;">
+        سعر الصرف: 1 دينار بحريني = ${formatNum(rate)} ${currency}
+        &nbsp;|&nbsp; الإجمالي ≈ ${formatNum(total / rate)} دينار بحريني
+      </p>` : '';
+
+    const workListHTML = workList.map((w, i) => `<li>${i + 1}. ${w}</li>`).join('');
     const duration = get('inv-duration');
 
     return `
@@ -691,10 +830,16 @@
             <th style="text-align:left;">المبلغ</th>
           </tr>
         </thead>
-        <tbody>${tableRows}</tbody>
+        <tbody>
+          ${tableRows}
+          ${vatRow}
+        </tbody>
       </table>
 
-      <div class="inv-total">الإجمالي المستحق: ${formatNum(total)} دينار بحريني</div>
+      <div class="inv-total">
+        الإجمالي المستحق: ${formatNum(total)} ${currency}
+        ${rateNote}
+      </div>
 
       <div class="inv-payment">
         <strong>طريقة الدفع:</strong><br/>
@@ -787,6 +932,14 @@
     el.textContent = msg;
     el.classList.add('show');
     setTimeout(() => el.classList.remove('show'), 2800);
+  }
+
+  /* ─── Toggle Advanced ────────────────────────── */
+  function toggleAdvanced() {
+    const body    = document.getElementById('adv-body');
+    const chevron = document.getElementById('adv-chevron');
+    const open    = body.classList.toggle('open');
+    chevron.classList.toggle('open', open);
   }
 
   // Close modal on overlay click
